@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { GoogleGenAI, type AuthToken } from '@google/genai';
 
-export async function GET({ locals }) {
+export const POST: APIRoute = async ({ locals }) => {
 	const { env } = locals.runtime;
 
 	if (!env.GEMINI_SECRET_KEY) {
@@ -28,4 +28,4 @@ export async function GET({ locals }) {
 		console.error('Error creating Gemini token:', error);
 		return new Response(JSON.stringify({ error: 'Failed to create token' }), { status: 500 });
 	}
-}
+};
