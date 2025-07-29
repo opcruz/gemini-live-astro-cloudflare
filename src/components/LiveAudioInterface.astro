@@ -1,0 +1,83 @@
+---
+// Este componente recibe la clave como una propiedad desde la página.
+// const { geminiKey } = Astro.props;
+export const prerender = true;
+---
+
+<astro-live-audio-interface>
+	<div class="controls">
+		<button id="resetButton" disabled>
+			<svg xmlns="http://www.w3.org/2000/svg" height="40px" viewBox="0 -960 960 960" width="40px" fill="#ffffff">
+				<path
+					d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"
+				></path>
+			</svg>
+		</button>
+		<button id="startButton">
+			<svg viewBox="0 0 100 100" width="32px" height="32px" fill="#c80000" xmlns="http://www.w3.org/2000/svg">
+				<circle cx="50" cy="50" r="50"></circle>
+			</svg>
+		</button>
+		<button id="stopButton" disabled>
+			<svg viewBox="0 0 100 100" width="32px" height="32px" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
+				<rect x="0" y="0" width="100" height="100" rx="15"></rect>
+			</svg>
+		</button>
+	</div>
+
+	<div id="status">Ready to start</div>
+	<canvas id="visualizer"></canvas>
+</astro-live-audio-interface>
+
+<script>
+	import { UIController } from '../lib/UIController';
+	import { AudioVisualizer } from '../lib/AudioVisualizer';
+	import { GeminiLiveAudio } from '../lib/GeminiLiveAudio';
+
+	async function fetchTokenAndInit(f: (apiKey: string) => void): Promise<void> {
+		try {
+			const response = await fetch('/api/gemini-token', { method: 'POST' });
+			const data = (await response.json()) as { token: string; error?: string };
+
+			if (!response.ok || !data.token) {
+				throw new Error(data.error || 'Token request failed');
+			}
+
+			f(data.token);
+		} catch (error) {
+			console.error('Failed to initialize GeminiLiveAudio:', error);
+			const status = document.getElementById('status');
+			if (status) status.textContent = 'Error: ' + error.message;
+		}
+	}
+
+	// Define the behaviour for our new type of HTML element.
+	class LiveAudioInterface extends HTMLElement {
+		connectedCallback() {
+			const status = this.querySelector('#status');
+			const startButton = this.querySelector('#startButton');
+			const stopButton = this.querySelector('#stopButton');
+			const resetButton = this.querySelector('#resetButton');
+			const visualizer = this.querySelector('#visualizer');
+
+			const ui = new UIController({
+				status: status as HTMLElement,
+				start: startButton as HTMLButtonElement,
+				stop: stopButton as HTMLButtonElement,
+				reset: resetButton as HTMLButtonElement,
+			});
+
+			const visualizerElement = new AudioVisualizer(visualizer as HTMLCanvasElement);
+
+			const f = (apiKey: string) => {
+				const geminiAudio = new GeminiLiveAudio(apiKey, ui, visualizerElement);
+				geminiAudio.initialize();
+			};
+
+			fetchTokenAndInit(f);
+		}
+	}
+
+	// Tell the browser to use our AstroHeart class for <astro-heart> elements.
+	customElements.define('astro-live-audio-interface', LiveAudioInterface);
+</script>
